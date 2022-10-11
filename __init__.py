@@ -1,4 +1,4 @@
-from flask import Flask,request,jsonify,make_response
+from flask import Flask,request,jsonify,make_response, url_for, render_template
 import time
 import datetime
 from functools import wraps
@@ -6,187 +6,38 @@ import uuid
 from werkzeug.security import generate_password_hash, check_password_hash
 import jwt
 from dbmanagement import *
-import sqlite3
-import hashlib
-import datetime as dtm
-
-#this is return object which all of the function has to return
-#value rep True/False
-#data rep if there is a data,Error,string or anyinfo need to be passed
-
-class Robject:
-    def __init__(self,value,data):
-        self.value=value
-        self.data=data
-class customuser:
-    def __init__(self,Id,public_id,firstname,lastname,email,username,password,admin,actv_usr,insrt_dtm,joined_dtm):
-        self.id=Id
-        self.public_id=public_id
-        self.firstname=firstname
-        self.lastname=lastname
-        self.email=email
-        self.username=username
-        self.password=password
-        self.admin=admin
-        self.actv_usr=actv_usr
-        self.insrt_dtm=insrt_dtm
-        self.joined_dtm=joined_dtm
-
-    def getjson(self):
-        output={
-                'id':self.id,
-               'public_id':self.public_id,
-               'firstname':self.firstname, 
-               'lastname': self.lastname,
-               'email':self.email,
-               'username': self.username,
-               'password':self.password,
-               'admin':self.admin,
-                'actv_usr':self.actv_usr,
-               'insrt_dtm':self.insrt_dtm,
-                'joined_dtm':self.joined_dtm
-            }
-        return output
-        
-class myDatabase:
-    def __init__(self):
-        self.con = sqlite3.connect('myapi.db')
-        self.cur=self.con.cursor()
-        self.create_table()
-    def __del__(self):
-        self.cur.close()
-        self.con.close()
-        print('Object Destroyed')
-    def create_table(self):
-        self.Check_user_table
-        self.Check_auth_table()
-    #return object
-    #Internal
-    def Check_user_table(self):
-        try:
-            self.cur.execute('''CREATE TABLE users
-            (id INTEGER PRIMARY KEY AUTOINCREMENT,
-            public_id INTEGER NOT NULL UNIQUE,
-            firstname text NOT NULL, 
-            lastname text NOT NULL,
-            email text NOT NULL UNIQUE,
-            username text NOT NULL UNIQUE,
-            password text NOT NULL,
-            admin INTEGER DEFAULT 0,
-            actv_usr text NOT NULL,
-            insrt_dtm text NOT NULL,
-            joined_dtm text NOT NULL)
-            ''')
-            self.con.commit()
-            print('users created')
-            return Robject(True,'User Table Created!')
-        except Exception as e:
-            print(e)
-            return Robject(False,str(e))
-    #return object
-    #Internal
-    def Check_auth_table(self):
-        try:
-            self.cur.execute('''CREATE TABLE auth
-                   (authid INTEGER PRIMARY KEY AUTOINCREMENT,
-                   id INTEGER NOT NULL,
-                   public_id INTEGER NOT NULL,
-                   token text NOT NULL UNIQUE,
-                   key text NOT NULL,
-                   insrt_dtm text NOT NULL)
-                   ''')
-            self.con.commit()
-            print('auth created')
-            return Robject(True, 'User Table Created!')
-        except Exception as e:
-            print(e)
-            return Robject(False,str(e))
-    def Check_edu_profile_table(self):
-        pass
-    #adding a new user to users table
-    #return object
-    def insert_user(self,first,last,email,user,passw):
-        datetime=str(dtm.datetime.now())
-        hashpass= hashlib.md5((str(passw)).encode()).hexdigest()
-        data=first+last+email+user+hashpass+datetime
-        result = hashlib.md5(data.encode()).hexdigest()
-        try:
-            self.cur.execute("INSERT INTO users VALUES (?,?,?,?,?,?,?,?,?,?,?)",
-            (None,result,first,last,email,user,passw,0,'Y',datetime,datetime))
-            self.con.commit()
-            return Robject(True,'Hi '+ user+' You account is created, login and get token!')
-        except Exception as e:
-            print(e)
-            return Robject(False,str(e))
-
-    #fun to return all users
-    def display_users(self):
-        self.cur.execute("SELECT * FROM users")
-        result=self.cur.fetchall()
-        data=[]
-        for i in result:
-            curuser=customuser(i[0],i[1],i[2],i[3],i[4],i[5],i[6],i[7],i[8],i[9],i[10])            
-            finaljson=curuser.getjson()
-            data.append(finaljson)
-        return data
-
-    #authentication: to autorize and deny with username and password
-    #return object
-    def authenticate(self,username,password):
-        query="SELECT * FROM users WHERE username='"+username+"' and password='"+password+"'"
-        self.cur.execute(query)
-        result=self.cur.fetchall()
-        if len(result)==0:
-            return Robject(False,result)
-        else:
-            data=result[0]
-            self.user=customuser(data[0],data[1],data[2],data[3],data[4],data[5],data[6],data[7],data[8],data[9],data[10])
-            return Robject(True,self.user)
-
-    #when user autorized add to Auth DB(data collection)
-    #return object
-    def add_authrized_user(self,user,token,datetime,key):
-        try:
-            self.cur.execute("INSERT INTO auth VALUES (?,?,?,?,?,?)",
-            (None,user.id,user.public_id,token,key,datetime))
-            self.con.commit()
-            return Robject(True,'auth log added!')
-        except Exception as e:
-            print(e)
-            return Robject(False,str(e))
-
-    #return object
-    def get_user(self,public_id):
-        self.cur.execute("SELECT * FROM users where public_id=?",(public_id,))
-        result=self.cur.fetchall()
-        data=[]
-        if len(result)==0:
-            return Robject(False,'Invalid User ID!')
-        elif len(result)!=1:
-            return Robject(False,'cound not find the user, please report to us! Internal Issue!!')
-        else:
-            for i in result:
-                newuser=customuser(i[0],i[1],i[2],i[3],i[4],i[5],i[6],i[7],i[8],i[9],i[10])
-                finaljson=newuser.getjson()
-                data.append(finaljson)
-            return Robject(True,data)
-
-    #promote user to admin, the current user must be admin to promote
-    #return object
-    def promote_user(self,userid,public_id):
-        try:
-            self.cur.execute("UPDATE users SET admin=1 where public_id=?",(public_id,))
-            self.con.commit()
-            data= 'Congradulation, User '+public_id+' has been promoted!'
-            return Robject(True,data)
-        
-        except Exception as e:
-            return Robject(True,str(e))
+#from .dbmanagement import *
 
 
 app=Flask(__name__)
 
 app.config['SECRET_KEY']='You are the key'
+rootDomain='https://www.akmnow.com/'
+rootDomain='http://127.0.0.1:5000/'
+
+#*****************Main page*********************************
+DomainName=[rootDomain,rootDomain+'feature',rootDomain+'service']
+@app.route('/')
+@app.route('/home')
+def index():
+    return render_template("index.html",domain=DomainName)
+
+@app.route('/feature')
+def home():
+    return render_template("feature.html",domain=DomainName)
+
+@app.route('/service')
+def Services():
+    return render_template("service.html",domain=DomainName)
+
+
+#WILL BE REMOVED AS SOON AS DONE
+@app.route('/services/')
+@app.route('/services/<name>')
+def Service(name=None):
+    return f'Welcome to Our Page {name}'
+#**************************************************
+
 
 def tokendecoder(f):
     @wraps(f)
@@ -206,13 +57,14 @@ def tokendecoder(f):
             return jsonify({"message":"Please provide token!"})
     return wrapper
 
-@app.route('/',methods=['GET','POST'])
-@tokendecoder
-def Home(userid):
+@app.route('/api',methods=['GET','POST'])
+#@tokendecoder
+def Home():#userid):
     currenttime=time.ctime()
+    userid='user'
     return jsonify({"message": "Welcome to Home page "+userid+" " + currenttime})
 
-@app.route('/user/<public_id>',methods=['GET','POST'])
+@app.route('/api/user/<public_id>',methods=['GET','POST'])
 @tokendecoder
 def user(userid,public_id):
     DB=myDatabase()
@@ -223,7 +75,7 @@ def user(userid,public_id):
     except:
         return jsonify({"message": res})
 
-@app.route('/users',methods=['POST'])
+@app.route('/api/users',methods=['POST'])
 @tokendecoder
 def users(userid):
     DB=myDatabase()
@@ -231,7 +83,7 @@ def users(userid):
     del DB
     return jsonify({"message": result})
 
-@app.route('/update_username/<username>',methods=['POST'])
+@app.route('/api/update_username/<username>',methods=['POST'])
 @tokendecoder
 def update_username(userid,username):
     data=request.get_json()
@@ -252,7 +104,7 @@ def update_username(userid,username):
 
 
         
-@app.route('/promote_user/<public_id>',methods=['POST'])
+@app.route('/api/promote_user/<public_id>',methods=['POST'])
 @tokendecoder
 def promote_user(userid,public_id):
     DB=myDatabase()
@@ -261,18 +113,47 @@ def promote_user(userid,public_id):
     return jsonify({'message':res.data})
 
 #adding education profile
-@app.route('/add_education_profile',methods=['POST'])
+@app.route('/api/addeducation_profile',methods=['POST'])
 @tokendecoder
-def add_education_profile(public_id):
+def addeducation_profile(public_id):
     data=request.get_json()
-    print(data)
-    for i in data:
-        print(i)
-    return data    
+    try:
+        school=data['school']
+        degree=data['degree']
+        gpa=data['gpa']
+        major=data['major']
+        started_dtm=data['started_dtm']
+        end_dtm=data['end_dtm']
+        grad_dtm=data['grad_dtm']
+        grad_status=data['grad_status']
+        
+        if school.strip(' ') and degree.strip(' ') and gpa.strip(' ') and major.strip(' ') and started_dtm.strip(' ') and end_dtm.strip(' ') and grad_dtm.strip(' ') and grad_status.strip(' '):
+            DB=myDatabase()
+            res=DB.addeducation_profile(public_id,school,degree,gpa,major,started_dtm,end_dtm,grad_dtm,grad_status)
+            DB.display_users()
+            del DB
+            return jsonify({'message':res.data})
+        else:
+            return jsonify({'message':'please provide a valid json format!'})
+    except Exception as e:
+        print(e)
+        return jsonify({"message":'Please send appropriate json format as provided'})
 
-@app.route('/login', methods=['GET','POST'])
+@app.route('/api/education_profile',methods=['GET'])
+@tokendecoder
+def education_profile(public_id):
+    try:
+        DB=myDatabase()
+        res=DB.education_profile(public_id)
+        del DB
+        return jsonify({'message':res.data})
+    except Exception as e:
+        return jsonify({'message':str(e)}),401
+
+@app.route('/api/login', methods=['GET','POST'])
 def login():
     auth=request.authorization
+
     if auth and auth.password and auth.username:
         print(auth)
         print(auth.username)
@@ -290,7 +171,7 @@ def login():
             return jsonify({"token":token})
     return make_response('Could not Verify',401,{'WWW-Authenticate': 'Basic realm="Login required!"' })
 
-@app.route('/signup', methods=['POST'])
+@app.route('/api/signup', methods=['POST'])
 def signup():
     data=request.get_json()
     try:
