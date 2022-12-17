@@ -1,3 +1,4 @@
+from unittest import result
 from flask import Flask,request,jsonify,make_response, url_for, render_template
 import time
 import datetime
@@ -16,28 +17,44 @@ rootDomain='https://www.akmnow.com/'
 rootDomain='http://127.0.0.1:5000/'
 
 #*****************Main page*********************************
-DomainName=[rootDomain,rootDomain+'feature',rootDomain+'service']
+DomainName=[rootDomain,rootDomain+'auth',rootDomain+'feature',rootDomain+'service',rootDomain+'docs',rootDomain+'resume']
 @app.route('/')
 @app.route('/home')
 def index():
-    return render_template("index.html",domain=DomainName)
+   return render_template("index.html",domain=DomainName)
 
+@app.route('/auth',methods=['GET','POST'])
+def Authenticate():
+    if request.method=="GET":
+        return render_template("auth.html",domain=DomainName,token='Token will be here when Autorized!')
+    elif request.method=="POST":
+        newauth=Auth()
+        newresult=newauth.UI_Login(request.form['username'],request.form['password'])
+        print(newresult)
+        if newresult[0] == True:
+            return render_template("auth.html",domain=DomainName,token=newresult[1])
+        else:
+            return render_template("auth.html",domain=DomainName,token=newresult[1])
+    elif request.method=="PUT":
+        pass
+        print('puttttttttt')
+        return render_template("auth.html",domain=DomainName,token='Signing up!')
+        
 @app.route('/feature')
-def home():
+def feature():
     return render_template("feature.html",domain=DomainName)
 
 @app.route('/service')
 def Services():
     return render_template("service.html",domain=DomainName)
+    
+@app.route('/docs')
+def docs():
+    return render_template("docs.html",domain=DomainName)
 
-
-#WILL BE REMOVED AS SOON AS DONE
-@app.route('/services/')
-@app.route('/services/<name>')
-def Service(name=None):
-    return f'Welcome to Our Page {name}'
-#**************************************************
-
+@app.route('/resume')
+def resume():
+    return render_template("resume.html",domain=DomainName)
 
 def tokendecoder(f):
     @wraps(f)
@@ -196,6 +213,31 @@ def signup():
     except Exception as e:
         print(e)
         return jsonify({"message":'Please send appropriate json format as provided'})
+
+
+class Auth:
+    def __init__(self) -> None:
+         pass
+
+    def UI_Login(self,username, password):
+        if username!="" and password!="":
+                print("UI Auth Username: ", username ,"Password: ",password)
+                data=[{"username":username},{"password":password}]
+                DB=myDatabase()
+                result=DB.authenticate(username,password)
+                if result.value==True:
+                    user=result.data
+                    currenttime=datetime.datetime.utcnow()
+                    expires=currenttime+datetime.timedelta(minutes=30)
+                    token=token=jwt.encode({'public_id':user.public_id,'exp':expires},app.config['SECRET_KEY'],algorithm="HS256")
+                    DB.add_authrized_user(user,token,currenttime,app.config['SECRET_KEY'])
+                    
+                    return [True, token]
+                else:
+                    return [False, "Invalid Username or Password!"]
+        else:
+            return [False, "Invalid Username or Password!"]
+
 
 
 if __name__=='__main__':

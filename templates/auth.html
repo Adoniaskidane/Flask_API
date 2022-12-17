@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<!--Entire row-->
+
+<div class="container">
+<div class="row ROW justify-content-md-center">
+  <!--left column-->
+  <div class="col-sm-3 bg-light border my-4">
+  <div class="row p-3">
+    <h1>LogIn</h1>
+  </div>
+  <div  class="p-2">
+  <form action="{{domain[1]}}" method="POST">
+    <div class="">
+      <label for="" class="form-label">Username</label>
+      <input name="username" class="form-control" id="" aria-describedby="">
+    </div>
+    <div class="">
+      <label for="exampleInputPassword1" class="form-label">Password</label>
+      <input type="password"name="password" class="form-control" id="exampleInputPassword1">
+    </div>
+    <div class="">
+      <label class="form-check-label" for="exampleCheck1">Submit here</label>
+    </div>
+    <button type="submit" class="btn btn-primary">Submit</button>
+  </form>
+  </div>
+
+  </div>
+
+  <!--Middle column-->
+  <div class="col-sm-1 align-self-center my-4">
+    <h1>OR</h1>
+  </div>
+
+  <!--right column-->
+  <div class="col-sm-7 bg-light border my-4">
+  <div class="row p-3">
+    <h1>SignUp</h1>
+  </div>
+  <div  class="p-2">
+  <form action="{{domain[1]}}" method="PUT">
+      <div class="">
+      <label for="" class="form-label">Username</label>
+      <input name="username" type="text" class="form-control" id="Username">
+    </div>
+        <div class="">
+      <label for="" class="form-label">Firstname</label>
+      <input name="firstname" type="text" class="form-control" id="Firstname">
+    </div>
+        <div class="">
+      <label for="" class="form-label">Lastname</label>
+      <input name="lastname" type="text" class="form-control" id="Lastname">
+    </div>
+    <div class="">
+      <label for="exampleInputEmail1" class="form-label">Email address</label>
+      <input name="email" type="text" class="form-control" id="exampleInputEmail1" aria-describedby="emailHelp">
+    </div>
+    <div class="">
+      <label for="exampleInputPassword1" class="form-label">Password</label>
+      <input name="password" type="password" class="form-control" id="exampleInputPassword1">
+    </div>
+    <div class="">
+      <label class="form-check-label" for="exampleCheck1">Submit here</label>
+    </div>
+    <button type="submit" class="btn btn-primary">Submit</button>
+  </form>
+  </div>
+  </div>
+
+</div>
+
+<div class="col">
+    <div class="row">
+        <h1>Token</h1>
+    </div>
+    <div class="row">
+  <form oninput="">
+    <div class="">{{token}}</div>
+  </form>
+
+    </div>
+  </div>
+</div>
+
+
+{% endblock %}
